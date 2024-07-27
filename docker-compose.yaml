@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: exampledb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  web-service:
+    build: ./web-service
+    ports:
+      - "8080:8080"
+      - "50051:50051"  # gRPC port
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_NAME: exampledb
+      DB_USER: user
+      DB_PASSWORD: password
+
+  app-direct-access:
+    build: ./app-direct-access
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_NAME: exampledb
+      DB_USER: user
+      DB_PASSWORD: password
+
+  app-via-web-service:
+    build: ./app-via-web-service
+    depends_on:
+      - web-service
+    environment:
+      WEB_SERVICE_URL: http://web-service:8080
+
+  app-via-grpc:
+    build: ./app-via-grpc
+    depends_on:
+      - web-service
+    environment:
+      GRPC_SERVER: web-service:50051
+
+volumes:
+  postgres_data:
